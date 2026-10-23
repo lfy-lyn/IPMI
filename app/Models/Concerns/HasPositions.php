@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\Position;
+use App\Models\Member;
 
 trait HasPositions
 {
@@ -49,5 +50,29 @@ trait HasPositions
     public function canAccessAllDivisions(): bool
     {
         return $this->isKetuaUmum() || $this->isSekretaris();
+    }
+
+    /**
+     * Check if current member can view another member
+     */
+    public function canViewMember(Member $member): bool
+    {
+        // Ketua Umum and Sekretaris can view all members
+        if ($this->isKetuaUmum() || $this->isSekretaris()) {
+            return true;
+        }
+
+        // Ketua Divisi can view members in their division
+        if ($this->isKetuaDivisi() && $this->division_id === $member->division_id) {
+            return true;
+        }
+
+        // Members can view themselves
+        if ($this->id === $member->id) {
+            return true;
+        }
+
+        // By default, members can view other members in same division
+        return $this->division_id === $member->division_id;
     }
 }

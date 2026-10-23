@@ -23,6 +23,13 @@
                             </a>
                         </div>
                     @endif
+                    @if(Auth::user()->member)
+                        <div class="ml-6 flex items-center">
+                            <a href="{{ route('admin.members.index') }}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                                Anggota
+                            </a>
+                        </div>
+                    @endif
                 </div>
                 <div class="flex items-center">
                     <span class="text-gray-700 mr-4">{{ Auth::user()->email }}</span>

@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\MembershipApplicationController;
 use App\Http\Controllers\MembershipReviewController;
 use App\Http\Controllers\AccountActivationController;
+use App\Http\Controllers\MemberController;
 
 // Public routes
 Route::get('/', function () {
@@ -36,6 +37,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/admin/pendaftaran/{application}', [MembershipReviewController::class, 'show'])->name('admin.membership.show');
     Route::post('/admin/pendaftaran/{application}/setujui', [MembershipReviewController::class, 'approve'])->name('admin.membership.approve');
     Route::post('/admin/pendaftaran/{application}/tolak', [MembershipReviewController::class, 'reject'])->name('admin.membership.reject');
+    
+    // Member management routes
+    Route::get('/admin/anggota', [MemberController::class, 'index'])->name('admin.members.index');
+    Route::get('/admin/anggota/{member}', [MemberController::class, 'show'])->name('admin.members.show');
+    Route::get('/admin/anggota/{member}/edit', [MemberController::class, 'edit'])->name('admin.members.edit');
+    Route::put('/admin/anggota/{member}', [MemberController::class, 'update'])->name('admin.members.update');
+    Route::post('/admin/anggota/{member}/nonaktifkan', [MemberController::class, 'deactivate'])->name('admin.members.deactivate');
 });
 
 // Test route for authorization middleware
