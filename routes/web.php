@@ -19,3 +19,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
+
+// Test route for authorization middleware
+Route::get('/test-ketua-umum', function () {
+    return 'Access granted';
+})->middleware(['auth', 'active', 'role:Ketua Umum']);
