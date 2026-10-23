@@ -16,6 +16,13 @@
                     <div class="flex-shrink-0 flex items-center">
                         <h1 class="text-xl font-bold text-gray-800">IPMI Dashboard</h1>
                     </div>
+                    @if(Auth::user()->member && (Auth::user()->member->isKetuaUmum() || Auth::user()->member->isSekretaris()))
+                        <div class="ml-6 flex items-center">
+                            <a href="{{ route('admin.membership.index') }}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                                Pendaftaran
+                            </a>
+                        </div>
+                    @endif
                 </div>
                 <div class="flex items-center">
                     <span class="text-gray-700 mr-4">{{ Auth::user()->email }}</span>

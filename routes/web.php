@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\MembershipApplicationController;
 use App\Http\Controllers\MembershipReviewController;
+use App\Http\Controllers\AccountActivationController;
 
 // Public routes
 Route::get('/', function () {
@@ -13,6 +14,11 @@ Route::get('/', function () {
 Route::get('/daftar', [MembershipApplicationController::class, 'create'])->name('membership.create');
 Route::post('/daftar', [MembershipApplicationController::class, 'store'])->name('membership.store');
 Route::get('/daftar/sukses', [MembershipApplicationController::class, 'success'])->name('membership.success');
+
+// Activation routes
+Route::get('/aktivasi/{token}', [AccountActivationController::class, 'show'])->name('activation.show');
+Route::post('/aktivasi/{token}', [AccountActivationController::class, 'activate'])->name('activation.activate');
+Route::get('/aktivasi-sukses', [AccountActivationController::class, 'success'])->name('activation.success');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);

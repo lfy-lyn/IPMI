@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\MembershipApplication;
 use App\Models\User;
 use App\Models\Member;
+use App\Models\ActivationToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AccountActivationMail;
 
 class MembershipReviewController extends Controller
 {
@@ -61,16 +64,68 @@ class MembershipReviewController extends Controller
             return back()->with('error', 'Pendaftaran ini sudah diproses sebelumnya.');
         }
 
-        DB::transaction(function () use ($application, $user) {
-            $application->update([
-                'status' => 'approved',
-                'reviewed_by' => $user->id,
-                'reviewed_at' => now(),
-            ]);
-        });
+        $emailSent = false;
 
-        return redirect()->route('admin.membership.show', $application)
-            ->with('success', 'Pendaftaran berhasil disetujui. Sistem aktivasi akun akan diimplementasikan pada tahap berikutnya.');
+        try {
+            DB::transaction(function () use ($application, $user, &$emailSent) {
+                // Update application status
+                $application->update([
+                    'status' => 'approved',
+                    'reviewed_by' => $user->id,
+                    'reviewed_at' => now(),
+                ]);
+
+                // Check if user already exists
+                $newUser = User::where('email', $application->email)->first();
+                
+                if (!$newUser) {
+                    // Create user account with pending status
+                    $newUser = User::create([
+                        'email' => $application->email,
+                        'password' => Hash::make(uniqid()), // Temporary, will be set during activation
+                        'status' => 'pending',
+                    ]);
+                }
+
+                // Check if member already exists
+                $newMember = Member::where('user_id', $newUser->id)->first();
+                
+                if (!$newMember) {
+                    // Create member record
+                    $newMember = Member::create([
+                        'user_id' => $newUser->id,
+                        'nis' => $application->nis,
+                        'full_name' => $application->full_name,
+                        'division_id' => $application->division_id,
+                        'phone' => $application->phone,
+                        'status' => 'active',
+                    ]);
+                }
+
+                // Generate activation token
+                $token = ActivationToken::generate($newMember);
+
+                // Send activation email (catch exception to prevent rollback)
+                try {
+                    Mail::to($application->email)->send(new AccountActivationMail($token, $application));
+                    $emailSent = true;
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send activation email: ' . $e->getMessage());
+                    // Don't throw - let transaction commit
+                }
+            });
+
+            if ($emailSent) {
+                return redirect()->route('admin.membership.show', $application)
+                    ->with('success', 'Pendaftaran berhasil disetujui. Email aktivasi telah dikirim ke ' . $application->email);
+            } else {
+                return redirect()->route('admin.membership.show', $application)
+                    ->with('warning', 'Pendaftaran berhasil disetujui, tetapi email aktivasi gagal dikirim. Mohon periksa konfigurasi email.');
+            }
+                
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 
     public function reject(Request $request, MembershipApplication $application)
