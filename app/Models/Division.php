@@ -9,7 +9,11 @@ class Division extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+        'status',
+    ];
 
     public function members()
     {

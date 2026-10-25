@@ -21,6 +21,7 @@ class MembershipApplication extends Model
         'rejection_reason',
         'reviewed_by',
         'reviewed_at',
+        'member_id',
     ];
 
     protected function casts(): array
@@ -45,5 +46,10 @@ class MembershipApplication extends Model
         return self::where('nis', $nis)
             ->whereIn('status', ['pending', 'approved'])
             ->count();
+    }
+
+    public function member()
+    {
+        return $this->belongsTo(Member::class);
     }
 }

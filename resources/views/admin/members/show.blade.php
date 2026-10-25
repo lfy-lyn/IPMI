@@ -27,7 +27,7 @@
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="text-lg font-semibold">{{ $member->full_name }}</h3>
-                    <p class="text-sm text-gray-600">NIS: {{ $member->nis }}</p>
+                    @if($showPrivate)<p class="text-sm text-gray-600">NIS: {{ $member->nis }}</p>@endif
                 </div>
                 <div>
                     @if($member->status === 'active')
@@ -38,35 +38,69 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 pt-4 border-t">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
+                @if($showPrivate)
                 <div>
                     <p class="text-sm text-gray-600">Email</p>
-                    <p class="font-medium">{{ $member->user->email }}</p>
+                    <p class="font-medium break-all">{{ $member->user?->email }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-600">Nomor Telepon</p>
                     <p class="font-medium">{{ $member->phone ?? '-' }}</p>
                 </div>
+                @endif
+                <div>
+                    <p class="text-sm text-gray-600">Kelas Saat Ini</p>
+                    <p class="font-medium">{{ $currentClass?->name ?? 'Belum ditetapkan' }}</p>
+                </div>
                 <div>
                     <p class="text-sm text-gray-600">Divisi</p>
                     <p class="font-medium">{{ $member->division->name }}</p>
                 </div>
+                @if($showPrivate)
                 <div>
                     <p class="text-sm text-gray-600">Status Akun</p>
-                    <p class="font-medium">{{ ucfirst($member->user->status) }}</p>
+                    <p class="font-medium">{{ ucfirst($member->user?->status ?? '-') }}</p>
                 </div>
+                @endif
             </div>
 
-            @if($member->positions->count() > 0)
-                <div class="pt-4 border-t">
-                    <p class="text-sm text-gray-600 mb-2">Jabatan Organisasi</p>
-                    <div class="flex gap-2">
+            <div class="pt-4 border-t">
+                <p class="text-sm text-gray-600 mb-2">Jabatan Organisasi</p>
+                @if($member->positions->count() > 0)
+                    <div class="flex flex-wrap gap-2">
                         @foreach($member->positions as $position)
-                            <span class="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded">{{ $position->name }}</span>
+                            <span class="inline-flex items-center gap-2 px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded">
+                                {{ $position->name }}
+                                @if($canManagePositions && (Auth::user()->member->isKetuaUmum() || in_array($position->name, ['Bendahara', 'Ketua Divisi'], true)))
+                                    <form method="POST" action="{{ route('admin.members.positions.remove', [$member, $position]) }}" class="inline"
+                                          onsubmit="return confirm('Cabut jabatan {{ $position->name }} dari {{ e($member->full_name) }}?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 font-bold" aria-label="Cabut jabatan {{ $position->name }}">&times;</button>
+                                    </form>
+                                @endif
+                            </span>
                         @endforeach
                     </div>
-                </div>
-            @endif
+                @else
+                    <p class="text-sm text-gray-500">Belum memegang jabatan (anggota biasa).</p>
+                @endif
+
+                @if($canManagePositions && $member->status === 'active' && $assignablePositions->isNotEmpty())
+                    <form method="POST" action="{{ route('admin.members.positions.assign', $member) }}" class="mt-3 flex flex-wrap items-end gap-2">
+                        @csrf
+                        <div>
+                            <label for="position_id" class="block text-xs text-gray-600 mb-1">Tetapkan jabatan</label>
+                            <select name="position_id" id="position_id" required class="border border-gray-300 rounded px-2 py-1 text-sm">
+                                @foreach($assignablePositions as $p)
+                                    <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded">Tetapkan</button>
+                    </form>
+                @endif
+            </div>
         </div>
 
         @if(Auth::user()->member && (Auth::user()->member->isKetuaUmum() || Auth::user()->member->isSekretaris()))

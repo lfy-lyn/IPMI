@@ -18,7 +18,7 @@
                 <input type="text" 
                        name="search" 
                        value="{{ request('search') }}"
-                       placeholder="Cari nama atau NIS..."
+                       placeholder="{{ $showPrivate ? 'Cari nama atau NIS...' : 'Cari nama...' }}"
                        class="flex-1 rounded border-gray-300">
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
                     Cari
@@ -35,9 +35,9 @@
             <table class="w-full">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIS</th>
+                        @if($showPrivate)<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIS</th>@endif
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Lengkap</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        @if($showPrivate)<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>@else<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jabatan</th>@endif
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Divisi</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
@@ -46,9 +46,13 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($members as $member)
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->nis }}</td>
+                            @if($showPrivate)<td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->nis }}</td>@endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->full_name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->user->email }}</td>
+                            @if($showPrivate)
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->user?->email }}</td>
+                            @else
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->positions->pluck('name')->join(', ') ?: '-' }}</td>
+                            @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $member->division->name }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($member->status === 'active')
@@ -65,7 +69,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                            <td colspan="{{ $showPrivate ? 6 : 4 }}" class="px-6 py-4 text-center text-gray-500">
                                 Tidak ada anggota ditemukan.
                             </td>
                         </tr>

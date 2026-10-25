@@ -38,6 +38,16 @@ return [
             'report' => false,
         ],
 
+        // Disk privat untuk file materi. Tidak punya URL publik: file hanya
+        // bisa diunduh lewat route terautentikasi (MaterialController@download).
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/uploads'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -185,10 +185,15 @@ class MemberManagementTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Anggota biasa TIDAK boleh mencari lewat NIS (mencegah penebakan NIS).
         $response = $this->actingAs($user)->get(route('admin.members.index', ['search' => '2024999']));
-        
         $response->assertStatus(200);
+        $response->assertDontSee('Target Member');
+
+        // Pencarian lewat nama tetap boleh, tanpa menampilkan NIS.
+        $response = $this->actingAs($user)->get(route('admin.members.index', ['search' => 'Target']));
         $response->assertSee('Target Member');
+        $response->assertDontSee('2024999');
     }
 
     public function test_member_detail_page_shows_complete_info()
@@ -241,7 +246,16 @@ class MemberManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($ketuaUser)->get(route('admin.members.show', $mtqMember));
-        $response->assertStatus(403);
+
+        // D-012: profil terbatas boleh dilihat, tetapi data pribadi divisi lain tidak.
+        $response->assertStatus(200);
+        $response->assertSee('Anggota MTQ');
+        $response->assertDontSee('2024002');
+        $response->assertDontSee($mtqMemberUser->email);
+
+        // Mengubah/menonaktifkan anggota divisi lain tetap terlarang.
+        $this->actingAs($ketuaUser)->post(route('admin.members.deactivate', $mtqMember))->assertStatus(403);
+        $this->assertTrue(true);
     }
 
     public function test_only_ketua_umum_and_sekretaris_can_edit_member()

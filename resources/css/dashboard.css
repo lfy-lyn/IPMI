@@ -1,0 +1,1241 @@
+/*
+ |--------------------------------------------------------------------------
+ | IPMI — gaya aplikasi internal (dashboard)
+ |--------------------------------------------------------------------------
+ | File ini HANYA dimuat oleh layouts/internal.blade.php. Halaman publik
+ | (home, daftar, login, aktivasi) tidak memuatnya, dan semua aturan di sini
+ | tetap di-scope di bawah `.ipmi-app` sebagai lapisan pengaman kedua.
+ |
+ | Urutan layer disamakan dengan Tailwind agar utility class pada view
+ | yang sudah ada tetap bisa menimpa gaya dasar di sini.
+ */
+@layer theme, base, components, utilities;
+
+/* ------------------------------------------------------------------------
+ | 1. Token desain & remap palet
+ | Palet Tailwind `gray` → slate dan `blue` → teal hanya di dalam .ipmi-app,
+ | sehingga puluhan view admin yang memakai gray/blue otomatis konsisten
+ | tanpa ditulis ulang. Tailwind v4 memakai var(--color-*) di setiap utility.
+ ------------------------------------------------------------------------ */
+.ipmi-app {
+    /* Token */
+    --ipmi-bg: #f8fafc;
+    --ipmi-surface: #ffffff;
+    --ipmi-text: #0f172a;
+    --ipmi-muted: #64748b;
+    --ipmi-border: #e6ebf1;
+    --ipmi-border-strong: #cbd5e1;
+    --ipmi-primary: #0d9488;
+    --ipmi-primary-hover: #0f766e;
+    --ipmi-primary-ink: #0f766e;
+    --ipmi-primary-soft: #ccfbf1;
+    --ipmi-primary-faint: #f0fdfa;
+    --ipmi-amber: #b45309;
+    --ipmi-amber-soft: #fef3c7;
+    --ipmi-danger: #dc2626;
+    --ipmi-danger-soft: #fee2e2;
+    --ipmi-radius-sm: 0.625rem;
+    --ipmi-radius-md: 0.75rem;
+    --ipmi-radius-lg: 1rem;
+    --ipmi-shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+    --ipmi-shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 8px 24px -8px rgb(15 23 42 / 0.06);
+    --ipmi-shadow-pop: 0 12px 32px -8px rgb(15 23 42 / 0.18), 0 2px 6px rgb(15 23 42 / 0.06);
+    --ipmi-sidebar-w: 16.5rem;
+    --ipmi-topbar-h: 4rem;
+    --ipmi-font-ui: var(--font-inter, 'Inter'), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --ipmi-font-display: var(--font-plus-jakarta-sans, 'Plus Jakarta Sans'), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    /* gray → slate */
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+    --color-gray-950: #020617;
+
+    /* blue → teal (warna utama) */
+    --color-blue-50: #f0fdfa;
+    --color-blue-100: #ccfbf1;
+    --color-blue-200: #99f6e4;
+    --color-blue-300: #5eead4;
+    --color-blue-400: #2dd4bf;
+    --color-blue-500: #14b8a6;
+    --color-blue-600: #0d9488;
+    --color-blue-700: #0f766e;
+    --color-blue-800: #115e59;
+    --color-blue-900: #134e4a;
+
+    /* Warna status: border lebih lembut agar notifikasi tidak terasa "keras" */
+    --color-green-400: #86efac;
+    --color-red-400: #fca5a5;
+    --color-yellow-400: #fcd34d;
+}
+
+/* ------------------------------------------------------------------------
+ | 2. Dasar
+ ------------------------------------------------------------------------ */
+@layer base {
+    .ipmi-app {
+        margin: 0;
+        background: var(--ipmi-bg);
+        color: var(--ipmi-text);
+        font-family: var(--ipmi-font-ui);
+        font-size: 0.9375rem;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        color-scheme: light;
+    }
+
+    .ipmi-app *,
+    .ipmi-app *::before,
+    .ipmi-app *::after {
+        /* Tailwind v4 membuat border-color default = currentColor; di sini dilembutkan. */
+        border-color: var(--ipmi-border);
+    }
+
+    .ipmi-app h1,
+    .ipmi-app h2,
+    .ipmi-app h3,
+    .ipmi-app h4 {
+        font-family: var(--ipmi-font-display);
+        letter-spacing: -0.01em;
+    }
+
+    .ipmi-app a {
+        text-decoration: none;
+    }
+
+    .ipmi-app :focus-visible {
+        outline: 2px solid var(--ipmi-primary);
+        outline-offset: 2px;
+    }
+
+    .ipmi-app.nav-open {
+        overflow: hidden;
+    }
+}
+
+/* ------------------------------------------------------------------------
+ | 3. Kerangka aplikasi: sidebar + area utama
+ ------------------------------------------------------------------------ */
+@layer components {
+    .ipmi-app .skip-link {
+        position: absolute;
+        left: 0.75rem;
+        top: -4rem;
+        z-index: 100;
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        background: var(--ipmi-primary);
+        color: #fff;
+        font-weight: 600;
+        transition: top 0.15s ease;
+    }
+    .ipmi-app .skip-link:focus {
+        top: 0.75rem;
+    }
+
+    .ipmi-app .app-shell {
+        display: flex;
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+
+    .ipmi-app .app-main {
+        flex: 1 1 0%;
+        min-width: 0; /* cegah konten lebar (tabel) mendorong layout */
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ---- Sidebar ---- */
+    .ipmi-app .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        flex: 0 0 var(--ipmi-sidebar-w);
+        width: var(--ipmi-sidebar-w);
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        background: var(--ipmi-surface);
+        border-right: 1px solid var(--ipmi-border);
+    }
+
+    .ipmi-app .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        min-height: var(--ipmi-topbar-h);
+        padding: 0 1.25rem;
+    }
+
+    .ipmi-app .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+        color: var(--ipmi-text);
+    }
+    .ipmi-app .brand-mark {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: var(--ipmi-radius-sm);
+        background: var(--ipmi-primary);
+        color: #fff;
+        box-shadow: 0 4px 10px -2px rgb(13 148 136 / 0.35);
+    }
+    .ipmi-app .brand-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.15;
+    }
+    .ipmi-app .brand-name {
+        font-family: var(--ipmi-font-display);
+        font-weight: 700;
+        font-size: 1.125rem;
+        letter-spacing: 0.01em;
+    }
+    .ipmi-app .brand-tag {
+        font-size: 0.6875rem;
+        color: var(--ipmi-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ipmi-app .sidebar-nav {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.5rem 0.875rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .ipmi-app .nav-group-label {
+        margin: 0 0 0.375rem;
+        padding: 0 0.875rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+
+    .ipmi-app .nav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ipmi-app .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 2.5rem;
+        padding: 0.5rem 0.875rem;
+        border-radius: 999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--ipmi-muted);
+        transition: background-color 0.18s ease, color 0.18s ease;
+    }
+    .ipmi-app .nav-link .icon {
+        flex: none;
+        color: #94a3b8;
+        transition: color 0.18s ease;
+    }
+    .ipmi-app .nav-link > span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ipmi-app .nav-link:hover {
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary-ink);
+    }
+    .ipmi-app .nav-link:hover .icon {
+        color: var(--ipmi-primary);
+    }
+    .ipmi-app .nav-link[aria-current='page'] {
+        background: var(--ipmi-primary-soft);
+        color: var(--ipmi-primary-ink);
+        font-weight: 600;
+    }
+    .ipmi-app .nav-link[aria-current='page'] .icon {
+        color: var(--ipmi-primary-ink);
+    }
+
+    .ipmi-app .sidebar-foot {
+        padding: 0.875rem 1.25rem 1.125rem;
+        border-top: 1px solid var(--ipmi-border);
+        font-size: 0.75rem;
+        color: var(--ipmi-muted);
+        line-height: 1.4;
+    }
+
+    .ipmi-app .icon-btn.sidebar-close {
+        display: none;
+    }
+
+    .ipmi-app .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: rgb(15 23 42 / 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+    .ipmi-app .sidebar-backdrop.is-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* ---- Topbar ---- */
+    .ipmi-app .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: var(--ipmi-topbar-h);
+        padding: 0 2rem;
+        background: rgb(255 255 255 / 0.92);
+        backdrop-filter: saturate(1.4) blur(8px);
+        border-bottom: 1px solid var(--ipmi-border);
+    }
+
+    .ipmi-app .icon-btn {
+        display: inline-grid;
+        place-items: center;
+        flex: none;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 999px;
+        color: var(--ipmi-muted);
+        background: transparent;
+        transition: background-color 0.18s ease, color 0.18s ease;
+    }
+    .ipmi-app .icon-btn:hover {
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary-ink);
+    }
+    .ipmi-app .icon-btn.menu-btn {
+        display: none;
+        margin-left: -0.5rem;
+    }
+
+    .ipmi-app .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 0.8125rem;
+        color: var(--ipmi-muted);
+    }
+    .ipmi-app .breadcrumb li {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-width: 0;
+    }
+    .ipmi-app .breadcrumb a:hover {
+        color: var(--ipmi-primary-ink);
+    }
+    .ipmi-app .breadcrumb [aria-current='page'] {
+        color: var(--ipmi-text);
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ipmi-app .breadcrumb .icon {
+        color: #cbd5e1;
+        flex: none;
+    }
+
+    .ipmi-app .topbar-brand {
+        display: none;
+    }
+
+    /* ---- Menu akun ---- */
+    .ipmi-app .account {
+        position: relative;
+        margin-left: auto;
+    }
+    .ipmi-app .account-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+        border-radius: 999px;
+        border: 1px solid var(--ipmi-border);
+        background: var(--ipmi-surface);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .ipmi-app .account-btn:hover,
+    .ipmi-app .account-btn[aria-expanded='true'] {
+        border-color: var(--ipmi-border-strong);
+        box-shadow: var(--ipmi-shadow-sm);
+    }
+    .ipmi-app .avatar {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 999px;
+        background: var(--ipmi-primary-soft);
+        color: var(--ipmi-primary-ink);
+        font-family: var(--ipmi-font-display);
+        font-weight: 700;
+        font-size: 0.8125rem;
+        letter-spacing: 0.02em;
+    }
+    .ipmi-app .avatar-lg {
+        width: 2.75rem;
+        height: 2.75rem;
+        font-size: 1rem;
+    }
+    .ipmi-app .account-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: 0;
+        max-width: 11rem;
+        line-height: 1.2;
+        text-align: left;
+    }
+    .ipmi-app .account-name {
+        max-width: 100%;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ipmi-app .account-role {
+        max-width: 100%;
+        font-size: 0.6875rem;
+        color: var(--ipmi-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ipmi-app .dropdown-panel {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.5rem);
+        z-index: 60;
+        width: min(18rem, calc(100vw - 2rem));
+        padding: 0.5rem;
+        border: 1px solid var(--ipmi-border);
+        border-radius: var(--ipmi-radius-lg);
+        background: var(--ipmi-surface);
+        box-shadow: var(--ipmi-shadow-pop);
+    }
+    .ipmi-app .dropdown-panel[hidden] {
+        display: none;
+    }
+    .ipmi-app .dropdown-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 0.625rem 0.75rem;
+        border-bottom: 1px solid var(--ipmi-border);
+        margin-bottom: 0.375rem;
+    }
+    .ipmi-app .dropdown-head > div:last-child {
+        min-width: 0;
+    }
+    .ipmi-app .dropdown-name {
+        font-weight: 600;
+        font-size: 0.875rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ipmi-app .dropdown-sub {
+        font-size: 0.75rem;
+        color: var(--ipmi-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ipmi-app .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        width: 100%;
+        min-height: 2.5rem;
+        padding: 0.5rem 0.625rem;
+        border-radius: var(--ipmi-radius-sm);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--ipmi-text);
+        text-align: left;
+        background: transparent;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .ipmi-app .dropdown-item:hover {
+        background: #f1f5f9;
+    }
+    .ipmi-app .dropdown-item.is-danger {
+        color: var(--ipmi-danger);
+    }
+    .ipmi-app .dropdown-item.is-danger:hover {
+        background: #fef2f2;
+    }
+
+    /* ---- Area konten ---- */
+    .ipmi-app .content {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 84rem;
+        margin: 0 auto;
+        padding: 1.75rem 2rem 3rem;
+    }
+}
+
+/* ------------------------------------------------------------------------
+ | 4. Komponen UI bersama
+ ------------------------------------------------------------------------ */
+@layer components {
+    .ipmi-app .icon {
+        flex: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+    .ipmi-app .icon-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    /* Kartu & panel */
+    .ipmi-app .card {
+        background: var(--ipmi-surface);
+        border: 1px solid var(--ipmi-border);
+        border-radius: var(--ipmi-radius-lg);
+        box-shadow: var(--ipmi-shadow-card);
+    }
+    .ipmi-app .card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem 0.75rem;
+        padding: 1.125rem 1.25rem 0;
+    }
+    .ipmi-app .card-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .ipmi-app .card-title .icon {
+        color: var(--ipmi-primary);
+    }
+    .ipmi-app .card-body {
+        padding: 1rem 1.25rem 1.25rem;
+    }
+    .ipmi-app .card-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--ipmi-primary);
+        white-space: nowrap;
+    }
+    .ipmi-app .card-link:hover {
+        color: var(--ipmi-primary-hover);
+    }
+
+    /* Judul halaman */
+    .ipmi-app .page-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .ipmi-app .page-title {
+        margin: 0;
+        font-size: 1.625rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .ipmi-app .page-sub {
+        margin: 0.25rem 0 0;
+        font-size: 0.875rem;
+        color: var(--ipmi-muted);
+    }
+
+    /* Tombol */
+    .ipmi-app .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.5rem;
+        padding: 0.5rem 1.125rem;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.25;
+        cursor: pointer;
+        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+    }
+    .ipmi-app .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+    .ipmi-app .btn-primary {
+        background: var(--ipmi-primary);
+        color: #fff;
+    }
+    .ipmi-app .btn-primary:hover {
+        background: var(--ipmi-primary-hover);
+    }
+    .ipmi-app .btn-secondary {
+        background: var(--ipmi-surface);
+        border-color: var(--ipmi-border-strong);
+        color: #334155;
+    }
+    .ipmi-app .btn-secondary:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+    }
+    .ipmi-app .btn-danger {
+        background: var(--ipmi-danger);
+        color: #fff;
+    }
+    .ipmi-app .btn-danger:hover {
+        background: #b91c1c;
+    }
+    .ipmi-app .btn-ghost {
+        background: transparent;
+        color: var(--ipmi-muted);
+    }
+    .ipmi-app .btn-ghost:hover {
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary-ink);
+    }
+    .ipmi-app .btn-sm {
+        min-height: 2.125rem;
+        padding: 0.375rem 0.875rem;
+        font-size: 0.8125rem;
+    }
+
+    /* Badge */
+    .ipmi-app .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.625rem;
+        border-radius: 999px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        line-height: 1.5;
+        white-space: nowrap;
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .ipmi-app .badge-teal { background: var(--ipmi-primary-soft); color: var(--ipmi-primary-ink); }
+    .ipmi-app .badge-amber { background: var(--ipmi-amber-soft); color: var(--ipmi-amber); }
+    .ipmi-app .badge-green { background: #dcfce7; color: #166534; }
+    .ipmi-app .badge-red { background: var(--ipmi-danger-soft); color: #b91c1c; }
+    .ipmi-app .badge-slate { background: #f1f5f9; color: #475569; }
+
+    /* Alert */
+    .ipmi-app .alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid;
+        border-radius: var(--ipmi-radius-md);
+        font-size: 0.875rem;
+    }
+    .ipmi-app .alert .icon {
+        margin-top: 0.0625rem;
+    }
+    .ipmi-app .alert-success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .ipmi-app .alert-error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .ipmi-app .alert-warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+    /* Kartu statistik */
+    .ipmi-app .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+    .ipmi-app .stat-card {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.25rem;
+        background: var(--ipmi-surface);
+        border: 1px solid var(--ipmi-border);
+        border-radius: var(--ipmi-radius-lg);
+        box-shadow: var(--ipmi-shadow-sm);
+        color: inherit;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    .ipmi-app a.stat-card:hover {
+        border-color: #99f6e4;
+        box-shadow: var(--ipmi-shadow-card);
+        transform: translateY(-1px);
+    }
+    .ipmi-app .stat-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+    .ipmi-app .stat-icon {
+        display: grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: var(--ipmi-radius-sm);
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary);
+    }
+    .ipmi-app .stat-icon.is-amber {
+        background: #fffbeb;
+        color: #d97706;
+    }
+    .ipmi-app .stat-value {
+        font-family: var(--ipmi-font-display);
+        font-weight: 700;
+        font-size: 2rem;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+    }
+    .ipmi-app .stat-label {
+        margin-top: 0.375rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #334155;
+    }
+    .ipmi-app .stat-hint {
+        font-size: 0.75rem;
+        color: var(--ipmi-muted);
+    }
+
+    /* Daftar bergaya baris */
+    .ipmi-app .list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .ipmi-app .list > li + li {
+        border-top: 1px solid var(--ipmi-border);
+    }
+    .ipmi-app .list-row {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+        padding: 0.75rem 0.25rem;
+        color: inherit;
+        border-radius: var(--ipmi-radius-sm);
+        transition: background-color 0.15s ease;
+    }
+    .ipmi-app a.list-row:hover {
+        background: #f8fafc;
+    }
+    .ipmi-app .date-chip {
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 3.25rem;
+        height: 3.5rem;
+        border-radius: var(--ipmi-radius-sm);
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary-ink);
+        line-height: 1.1;
+    }
+    .ipmi-app .date-chip .d {
+        font-family: var(--ipmi-font-display);
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+    .ipmi-app .date-chip .m {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .ipmi-app .row-main {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .ipmi-app .row-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ipmi-app .row-sub {
+        font-size: 0.75rem;
+        color: var(--ipmi-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Empty state */
+    .ipmi-app .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1.75rem 1rem;
+        text-align: center;
+    }
+    .ipmi-app .empty-icon {
+        display: grid;
+        place-items: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+    .ipmi-app .empty-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #334155;
+    }
+    .ipmi-app .empty-text {
+        max-width: 22rem;
+        font-size: 0.8125rem;
+        color: var(--ipmi-muted);
+    }
+
+    /* Layout dua kolom dashboard */
+    .ipmi-app .dash-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+    }
+    .ipmi-app .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        min-width: 0;
+    }
+
+    /* Pintasan */
+    .ipmi-app .shortcut-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .ipmi-app .shortcut {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 2.75rem;
+        padding: 0.5rem 0.625rem;
+        border-radius: var(--ipmi-radius-sm);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #334155;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .ipmi-app .shortcut .icon {
+        color: var(--ipmi-primary);
+    }
+    .ipmi-app .shortcut .arrow {
+        margin-left: auto;
+        color: #cbd5e1;
+    }
+    .ipmi-app .shortcut:hover {
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary-ink);
+    }
+
+    /* Pagination (resources/views/pagination/ipmi.blade.php) */
+    .ipmi-app .pager {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.8125rem;
+        color: var(--ipmi-muted);
+    }
+    .ipmi-app .pager-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .ipmi-app .pager-item {
+        display: inline-grid;
+        place-items: center;
+        min-width: 2.25rem;
+        height: 2.25rem;
+        padding: 0 0.625rem;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #475569;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .ipmi-app a.pager-item:hover {
+        background: var(--ipmi-primary-faint);
+        color: var(--ipmi-primary-ink);
+    }
+    .ipmi-app .pager-item[aria-current='page'] {
+        background: var(--ipmi-primary);
+        color: #fff;
+    }
+    .ipmi-app .pager-item[aria-disabled='true'] {
+        color: #cbd5e1;
+        cursor: default;
+    }
+}
+
+/* ------------------------------------------------------------------------
+ | 5. Skin untuk halaman admin yang sudah ada
+ | Menyeragamkan markup utility lama (tabel, formulir, kartu, tombol) tanpa
+ | mengubah perilaku. Berada di layer `components`, jadi class utility pada
+ | view tetap bisa menimpa bila perlu.
+ ------------------------------------------------------------------------ */
+@layer components {
+    /* Formulir */
+    .ipmi-app .content :is(input:not([type='checkbox'], [type='radio'], [type='file'], [type='hidden'], [type='submit'], [type='button'], [type='range'], [type='color']), select, textarea) {
+        min-height: 2.5rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--ipmi-border-strong);
+        border-radius: var(--ipmi-radius-sm);
+        background-color: #fff;
+        color: var(--ipmi-text);
+        font: inherit;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ipmi-app .content textarea {
+        min-height: 5.5rem;
+    }
+    .ipmi-app .content :is(input, select, textarea)::placeholder {
+        color: #94a3b8;
+    }
+    .ipmi-app .content :is(input:not([type='checkbox'], [type='radio'], [type='file']), select, textarea):focus {
+        outline: none;
+        border-color: var(--ipmi-primary);
+        box-shadow: 0 0 0 3px rgb(13 148 136 / 0.18);
+    }
+    .ipmi-app .content :is(input, select, textarea):disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+    .ipmi-app .content :is(input[type='checkbox'], input[type='radio']) {
+        accent-color: var(--ipmi-primary);
+        width: 1rem;
+        height: 1rem;
+    }
+    .ipmi-app .content label {
+        color: #334155;
+    }
+    .ipmi-app .content input[type='file'] {
+        font-size: 0.875rem;
+    }
+    .ipmi-app .content input[type='file']::file-selector-button {
+        margin-right: 0.75rem;
+        padding: 0.375rem 0.875rem;
+        border: 1px solid var(--ipmi-border-strong);
+        border-radius: 999px;
+        background: #fff;
+        color: #334155;
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .ipmi-app .content input[type='file']::file-selector-button:hover {
+        background: #f8fafc;
+    }
+
+    /* Tabel */
+    .ipmi-app .content table {
+        border-collapse: collapse;
+    }
+    .ipmi-app .content thead {
+        background: #f8fafc;
+    }
+    .ipmi-app .content th {
+        font-size: 0.6875rem;
+        letter-spacing: 0.06em;
+        color: #64748b;
+        white-space: nowrap;
+    }
+    .ipmi-app .content tbody td {
+        color: #334155;
+    }
+    .ipmi-app .content tbody tr {
+        transition: background-color 0.12s ease;
+    }
+    .ipmi-app .content tbody tr:hover {
+        background: #fafcfd;
+    }
+    .ipmi-app .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Tautan di dalam konten */
+    .ipmi-app .content a.text-blue-600 {
+        font-weight: 500;
+    }
+}
+
+/*
+ * Aturan di bawah sengaja berada DI LUAR layer agar menang atas utility class
+ * (utility berada di dalam @layer utilities). Dibatasi ke .content supaya
+ * tidak menyentuh sidebar/topbar.
+ */
+
+/* Pembungkus halaman lama (max-w-7xl + padding sendiri) → ikut lebar .content */
+.ipmi-app .content > .max-w-7xl,
+.ipmi-app .content > div > .max-w-7xl {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.ipmi-app .content > .max-w-7xl > .px-4,
+.ipmi-app .content > .max-w-7xl > .sm\:px-0 {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+}
+
+/* Kartu lama (bg-white + shadow) → gaya kartu seragam */
+.ipmi-app .content .bg-white:is(.shadow, .shadow-sm, .shadow-md) {
+    border-radius: var(--ipmi-radius-lg);
+    box-shadow: 0 0 0 1px var(--ipmi-border), var(--ipmi-shadow-card);
+}
+
+/* Tombol lama (a/button berlatar warna) → pil seragam */
+.ipmi-app .content :is(a, button)[class*='bg-'][class*='px-']:not([class*='bg-white'], [class*='bg-transparent']) {
+    border-radius: 999px;
+    font-weight: 500;
+    transition: background-color 0.18s ease, opacity 0.18s ease;
+}
+.ipmi-app .content :is(a, button)[class*='bg-gray-200'][class*='px-'],
+.ipmi-app .content :is(a, button)[class*='bg-gray-300'][class*='px-'] {
+    color: #334155;
+}
+
+/* Badge lama (span kecil berlatar) → pil */
+.ipmi-app .content span[class*='bg-'][class*='text-xs'][class*='px-'] {
+    border-radius: 999px;
+    font-weight: 600;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+}
+
+/* Alert lama → radius seragam */
+.ipmi-app .content div[class*='border-green-'][class*='rounded'],
+.ipmi-app .content div[class*='border-red-'][class*='rounded'],
+.ipmi-app .content div[class*='border-yellow-'][class*='rounded'] {
+    border-radius: var(--ipmi-radius-md);
+}
+
+/* Judul halaman lama */
+.ipmi-app .content h2.text-2xl {
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+/* ------------------------------------------------------------------------
+ | 6. Responsif
+ ------------------------------------------------------------------------ */
+
+/* Laptop kecil */
+@media (max-width: 1279px) {
+    .ipmi-app .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Tablet & ponsel: sidebar menjadi drawer */
+@media (max-width: 1023px) {
+    .ipmi-app .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(var(--ipmi-sidebar-w), 86vw);
+        transform: translateX(-100%);
+        visibility: hidden;
+        box-shadow: none;
+        transition: transform 0.22s ease, visibility 0s linear 0.22s, box-shadow 0.22s ease;
+    }
+    .ipmi-app .sidebar.is-open {
+        transform: translateX(0);
+        visibility: visible;
+        box-shadow: var(--ipmi-shadow-pop);
+        transition: transform 0.22s ease, visibility 0s, box-shadow 0.22s ease;
+    }
+    .ipmi-app .icon-btn.sidebar-close {
+        display: inline-grid;
+        margin-right: -0.5rem;
+    }
+    .ipmi-app .icon-btn.menu-btn {
+        display: inline-grid;
+    }
+    .ipmi-app .topbar {
+        padding: 0 1rem;
+    }
+    .ipmi-app .content {
+        padding: 1.5rem 1.25rem 2.5rem;
+    }
+    .ipmi-app .dash-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Ponsel */
+@media (max-width: 639px) {
+    .ipmi-app .topbar {
+        gap: 0.5rem;
+    }
+    .ipmi-app .topbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--ipmi-font-display);
+        font-weight: 700;
+        font-size: 1.0625rem;
+    }
+    .ipmi-app .topbar-brand .brand-mark {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.5rem;
+    }
+    .ipmi-app .breadcrumb {
+        display: none;
+    }
+    .ipmi-app .account-meta,
+    .ipmi-app .account-btn > .icon {
+        display: none;
+    }
+    .ipmi-app .account-btn {
+        padding: 0.125rem;
+    }
+    .ipmi-app .content {
+        padding: 1.25rem 1rem 2rem;
+    }
+    .ipmi-app .stat-grid {
+        gap: 0.75rem;
+    }
+    .ipmi-app .stat-card {
+        padding: 1rem;
+        gap: 0.75rem;
+    }
+    .ipmi-app .stat-value {
+        font-size: 1.625rem;
+    }
+    .ipmi-app .page-title {
+        font-size: 1.375rem;
+    }
+    .ipmi-app .card-head {
+        padding: 1rem 1rem 0;
+    }
+    .ipmi-app .card-body {
+        padding: 0.875rem 1rem 1rem;
+    }
+    .ipmi-app .pager {
+        justify-content: center;
+    }
+    .ipmi-app .row-title,
+    .ipmi-app .row-sub {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .ipmi-app .list-row {
+        gap: 0.75rem;
+    }
+
+    /* Tabel lebih rapat; tetap bisa digeser horizontal di dalam pembungkusnya */
+    .ipmi-app .content table :is(th, td) {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Area ketuk lebih nyaman */
+    .ipmi-app .content :is(a, button)[class*='bg-'][class*='px-'] {
+        min-height: 2.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Ponsel sangat kecil: kartu statistik satu kolom */
+@media (max-width: 359px) {
+    .ipmi-app .stat-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ipmi-app *,
+    .ipmi-app *::before,
+    .ipmi-app *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}

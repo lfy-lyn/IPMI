@@ -142,3 +142,6 @@ php artisan serve
 - activity_attendances untuk kegiatan insidental
 - Foreign key eksplisit, bukan polymorphic relation
 - Kegiatan multi-hari: mode per_event atau per_day
+# IPMI
+# IPMI
+# IPMI

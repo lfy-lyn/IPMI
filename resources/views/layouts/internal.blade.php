@@ -4,63 +4,43 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'IPMI') }} - Dashboard</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @php
+        $me = Auth::user()->member;
+        $menuGroups = \App\Support\InternalMenu::groups($me);
+        $activeItem = \App\Support\InternalMenu::active($menuGroups);
+
+        $displayName = $me?->full_name ?: Auth::user()->email;
+        $initials = \App\Support\InternalMenu::initials($displayName);
+        $roleLabel = $me
+            ? ($me->positions->pluck('name')->join(', ') ?: 'Anggota')
+            : 'Akun';
+
+        // Isi halaman dirender lebih dulu agar flash yang sudah ditampilkan view tidak dobel.
+        $content = $__env->yieldContent('content');
+    @endphp
+    <title>{{ $activeItem['label'] ?? 'Dashboard' }} — {{ config('app.name', 'IPMI') }}</title>
+    @fonts(['inter', 'plus-jakarta-sans'])
+    @vite(['resources/css/app.css', 'resources/css/dashboard.css', 'resources/js/app.js', 'resources/js/dashboard.js'])
     @livewireStyles
 </head>
-<body class="bg-gray-50">
-    <nav class="bg-white shadow">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <h1 class="text-xl font-bold text-gray-800">IPMI Dashboard</h1>
-                    </div>
-                    @if(Auth::user()->member && (Auth::user()->member->isKetuaUmum() || Auth::user()->member->isSekretaris()))
-                        <div class="ml-6 flex items-center">
-                            <a href="{{ route('admin.membership.index') }}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                                Pendaftaran
-                            </a>
-                        </div>
-                    @endif
-                    @if(Auth::user()->member)
-                        <div class="ml-6 flex items-center">
-                            <a href="{{ route('admin.members.index') }}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                                Anggota
-                            </a>
-                        </div>
-                    @endif
-                </div>
-                <div class="flex items-center">
-                    <span class="text-gray-700 mr-4">{{ Auth::user()->email }}</span>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="text-gray-700 hover:text-gray-900">
-                            Logout
-                        </button>
-                    </form>
-                </div>
-            </div>
+<body class="ipmi-app">
+    <a href="#konten" class="skip-link">Lewati ke konten utama</a>
+
+    <div class="app-shell">
+        <div class="sidebar-backdrop" data-nav-backdrop aria-hidden="true"></div>
+
+        @include('layouts.partials.sidebar')
+
+        <div class="app-main">
+            @include('layouts.partials.topbar')
+
+            <main id="konten" class="content" tabindex="-1">
+                @include('layouts.partials.flash')
+
+                {!! $content !!}
+            </main>
         </div>
-    </nav>
-
-    <main class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if(session('success'))
-                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            @yield('content')
-        </div>
-    </main>
+    </div>
 
     @livewireScripts
 </body>

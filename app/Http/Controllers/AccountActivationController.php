@@ -44,7 +44,7 @@ class AccountActivationController extends Controller
     public function activate(Request $request, string $token)
     {
         $validated = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:100', 'confirmed'],
         ]);
 
         $activationToken = ActivationToken::where('token', $token)->first();
@@ -53,9 +53,14 @@ class AccountActivationController extends Controller
             return back()->with('error', 'Token aktivasi tidak valid atau sudah kedaluwarsa.');
         }
 
+        $user = $activationToken->member?->user;
+        // Token hanya boleh mengaktifkan akun yang masih 'pending' (tidak boleh mengganti password akun aktif).
+        if (!$user || $user->status !== 'pending' || $activationToken->member->status !== 'active') {
+            return back()->with('error', 'Token aktivasi tidak valid untuk akun ini.');
+        }
+
         try {
-            DB::transaction(function () use ($activationToken, $validated) {
-                $user = $activationToken->member->user;
+            DB::transaction(function () use ($activationToken, $validated, $user) {
 
                 // Set password and activate account
                 $user->update([

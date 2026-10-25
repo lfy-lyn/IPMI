@@ -43,4 +43,22 @@ class Member extends Model
     {
         return $this->hasMany(ActivityAttendance::class);
     }
+
+    /**
+     * Get the current class for the member (from active academic year).
+     */
+    public function currentClass()
+    {
+        $activeYear = \App\Models\AcademicYear::where('status', 'active')->first();
+        if (!$activeYear) {
+            return null;
+        }
+
+        return $this->classHistories()
+                    ->whereHas('classRoom', function ($query) use ($activeYear) {
+                        $query->where('academic_year_id', $activeYear->id);
+                    })
+                    ->with('classRoom')
+                    ->first();
+    }
 }

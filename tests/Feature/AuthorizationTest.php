@@ -80,7 +80,9 @@ class AuthorizationTest extends TestCase
         $user = User::create(['email' => 'member@test.com', 'password' => Hash::make('pass'), 'status' => 'active']);
         $member = Member::create(['user_id' => $user->id, 'nis' => '005', 'full_name' => 'Member', 'division_id' => $this->kaligrafi->id]);
 
-        $response = $this->actingAs($user)->get('/test-ketua-umum');
+        \Illuminate\Support\Facades\Route::get('/_test-ketua-umum', fn () => 'ok')->middleware(['web', 'auth', 'active', 'role:Ketua Umum']);
+
+        $response = $this->actingAs($user)->get('/_test-ketua-umum');
         $response->assertStatus(403);
     }
 

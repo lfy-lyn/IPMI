@@ -9,7 +9,11 @@ class Position extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+        'level',
+    ];
 
     public function members()
     {
